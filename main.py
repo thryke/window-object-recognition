@@ -3,24 +3,28 @@ import numpy as np
 import os
 from windowcapture import WindowCapture
 import win32gui, win32ui, win32con
-#from objectrecognition import PointFinder
+import pyautogui as pag
+import pygetwindow as gw
+import time
+import random
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
-#wincap = WindowCapture('RuneLite')
-window_name = input('Window to capture: ')
-wincap = WindowCapture(window_name)
+wincap = WindowCapture('RuneLite - popomeister')
+#window_name = input('Window to capture: ')
+#wincap = WindowCapture(window_name)
 
-def findClickPositions(needle_img_path, img, threshold=0.5, debug_mode=None):
+def findClickPositions(needle_img_path, img, threshold=0.80, debug_mode=None):
     cv.imwrite('ss.png', img)
-    haystack_img = cv.imread('ss.png', cv.IMREAD_UNCHANGED)
-    needle_img = cv.imread(needle_img_path, cv.IMREAD_UNCHANGED)
+    haystack_img = cv.imread('ss.png', cv.IMREAD_GRAYSCALE)
+    haystack = haystack_img.astype(np.uint8)
+    needle_img = cv.imread(needle_img_path, cv.IMREAD_GRAYSCALE)
 
     needle_w = needle_img.shape[1]
     needle_h = needle_img.shape[0]
 
     method = cv.TM_CCOEFF_NORMED
-    result = cv.matchTemplate(haystack_img, needle_img, method)
+    result = cv.matchTemplate(haystack, needle_img, method)
 
     locations = np.where(result >= threshold)
     locations = list(zip(*locations[::-1]))
@@ -31,7 +35,7 @@ def findClickPositions(needle_img_path, img, threshold=0.5, debug_mode=None):
         rectangles.append(rect)
         rectangles.append(rect)
 
-    rectangles, weights = cv.groupRectangles(rectangles, 1, 0.5)
+    rectangles, weights = cv.groupRectangles(rectangles, 1, 0.95)
     #print(rectangles)
 
     points = []
@@ -61,12 +65,38 @@ def findClickPositions(needle_img_path, img, threshold=0.5, debug_mode=None):
     return points
 
 while(True):
-    needle = 'iron2.png'
+    
+    needle = 'assets/mining/iron-ore.png'
     screenshot = wincap.get_screenshot()
-    #points = findClickPositions(needle, screenshot)
-    #wincap.list_window_names()
-    cv.imshow('Computer Vision', screenshot)
+    points = findClickPositions(needle, screenshot)
+    rl = gw.getWindowsWithTitle('RuneLite')[0]
+    x_off, y_off = rl.topleft
+    
+    #needles = ["iron-ore.png", "iron-ore-2.png", "iron-ore-3.png", "iron-ore-4.png", "iron-ore-5.png"]
+    #needles = ["tree.png", "tree-2.png"]
 
+    '''
+    for needle in needles:
+        #print(needle)
+        points = findClickPositions(needle, screenshot)
+    '''
+    print(points)
+    
+    if points:
+        coords = points.pop(0)
+        x, y = coords
+        runeLiteWindows = pag.getWindowsWithTitle('RuneLite')  
+        win = runeLiteWindows[0]
+        time.sleep(1) 
+        pag.moveTo(x + x_off + random.randrange(10), y + y_off + random.randrange(10), duration=random.uniform(1.0, 3.0))
+        pag.click()
+        time.sleep(3)
+    else:
+        pag.moveTo(x_off + 270 + random.randrange(30), y_off + 240 + random.randrange(30), duration=random.uniform(1.0, 3.0))
+        pag.click()
+        time.sleep(5)
+        
+    cv.imshow('Computer Vision', screenshot)
     if cv.waitKey(1) == ord('q'):
         cv.destroyAllWindows()
         break
