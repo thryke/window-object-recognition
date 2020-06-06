@@ -39,7 +39,6 @@ class WindowCapture:
 
         img = img[...,:3]
         img = np.ascontiguousarray(img)
-
         return img
 
     def list_window_names(self):
