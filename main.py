@@ -1,16 +1,20 @@
+import datetime
+import math
+import os
+import random
+import sys
+import time
+
 import cv2 as cv
 import numpy as np
-import os
-from windowcapture import WindowCapture
-import win32gui, win32ui, win32con
 import pyautogui as pag
 import pygetwindow as gw
-import time
-import random
+import win32con
+import win32gui
+import win32ui
+
 from config import AccountInfo
-import math
-import sys
-import datetime
+from windowcapture import WindowCapture
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
@@ -21,7 +25,6 @@ os.chdir(os.path.dirname(os.path.abspath(__file__)))
 username = user.getUsername()
 window_name = 'RuneLite - ' + username
 wincap = WindowCapture(window_name)
-
 
 # returns a set of points where cv2 returns a confidence level >= threshold
 # format of return is a list of tuples
@@ -216,12 +219,53 @@ def validAction(action, img):
     else:
         return False
 
+def rlTabSwitch(tab):
+    screenshot = wincap.get_screenshot()
+    points = findClickPositions('assets/util/rl-settings.png', screenshot, threshold=0.95)
+    rl = gw.getWindowsWithTitle('RuneLite')[0]
+    x_off, y_off = rl.topleft  
+    if points:
+        x, y = points.pop(0)
+        pag.moveTo(x + x_off, y + y_off, duration=random.uniform(0.1, 0.3))
+        pag.click()
+    else:
+        points = findClickPositions('assets/util/rl-search-icon.png', screenshot, threshold=0.95)
+        if points:
+            x, y = points.pop(0)
+            pag.moveTo(x + x_off + 30, y + y_off, duration=random.uniform(0.1, 0.3))
+            pag.click()
+            pag.keyDown('ctrl')
+            pag.press('a')
+            pag.keyUp('ctrl')
+            pag.press('backspace')
+        else:
+            print('try restarting with a runelite tab open')
 
-screenshot = wincap.get_screenshot()
-#logout()
+# toggle runelite plugins
+def rlPluginToggle(plugin):
+    pag.write(plugin)
+    screenshot = wincap.get_screenshot()   
+    points = findClickPositions('assets/util/rl-settings-toggle.png', screenshot, threshold=0.95)
+    rl = gw.getWindowsWithTitle('RuneLite')[0]
+    x_off, y_off = rl.topleft  
+    if points:
+        x, y = points.pop(0)
+        pag.moveTo(x + x_off, y + y_off, duration=random.uniform(0.1, 0.3))
+        pag.click()
+        print(plugin,': OFF')
+    else:
+        points = findClickPositions('assets/util/rl-settings-toggle-off.png', screenshot, threshold=0.9)
+        if points:
+            x, y = points.pop(0)
+            pag.moveTo(x + x_off, y + y_off, duration=random.uniform(0.1, 0.3))
+            pag.click()
+            print(plugin,': ON')
+        else:
+            print('invalid plugin name')
 
 # login if on the login screen
 # TODO: add functionality to allow for logging in to a new window
+screenshot = wincap.get_screenshot()
 if not loginCheck(screenshot):
     login(user.getUsername(), user.getPassword())
 
@@ -250,7 +294,9 @@ while(True):
     curr_x, curr_y = pag.position()
 
     if fullInvCheck(screenshot):
-        clearInv('assets/inventory/iron-inv.png')
+        #clearInv('assets/inventory/iron-inv.png')
+        rlTabSwitch('assets/util/rl-settings.png')
+        rlPluginToggle('entity hider')
         
     # if the list of points is not empty, compute its position relative to the window
     if points:
@@ -274,7 +320,7 @@ while(True):
 
     # imshow used to do live monitoring of the obtained images
     # not useful in current implementation because of the use of time.sleep()
-    cv.imshow('Computer Vision', screenshot)
+    #cv.imshow('Computer Vision', screenshot)
 
     # 'p' can be used to pause operation for 30 seconds and 'q' can be used to quit
     # not needed in current implementation because of the automatic timeout
@@ -288,7 +334,8 @@ while(True):
     current_time = datetime.datetime.now()
     t = (current_time.year, current_time.month, current_time.day, current_time.hour, current_time.minute, current_time.second, current_time.microsecond, 0, 0)
     current_time = time.mktime(t)
-    print((int)(end_time - current_time), 'seconds remaining')
+    remaining = (int)(end_time - current_time)
+    print(remaining, 'seconds/', remaining//60, 'minutes remaining')
 
     if current_time > end_time:
         logout()
